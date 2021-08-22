@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace BackgroundEmailSenderSample.Models.InputModels
 {
-    public class InputMailSender
+    public class EmailInputModel
     {
         [Required(ErrorMessage = "L'indirizzo email è obbligatorio"), EmailAddress, Display(Name = "Destinatario")]
         public string recipientEmail { get; set; }
