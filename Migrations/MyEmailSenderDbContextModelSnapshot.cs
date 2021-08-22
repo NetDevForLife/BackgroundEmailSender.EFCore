@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
-namespace background_email_sender_master.Migrations
+namespace BackgroundEmailSenderSample.Migrations
 {
     [DbContext(typeof(MyEmailSenderDbContext))]
     partial class MyEmailSenderDbContextModelSnapshot : ModelSnapshot

@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
-namespace background_email_sender_master.Migrations
+namespace BackgroundEmailSenderSample.Migrations
 {
     [DbContext(typeof(MyEmailSenderDbContext))]
     [Migration("20210808185217_InitialMigration")]

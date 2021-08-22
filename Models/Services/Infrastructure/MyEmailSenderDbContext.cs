@@ -1,4 +1,4 @@
-using background_email_sender_master.Models.Entities;
+using BackgroundEmailSenderSample.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace BackgroundEmailSenderSample.Models.Services.Infrastructure

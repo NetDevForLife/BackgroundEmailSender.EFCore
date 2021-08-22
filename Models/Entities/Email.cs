@@ -1,4 +1,4 @@
-namespace background_email_sender_master.Models.Entities
+namespace BackgroundEmailSenderSample.Models.Entities
 {
     public partial class Email
     {

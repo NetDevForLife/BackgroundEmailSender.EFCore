@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore.Migrations;
 
-namespace background_email_sender_master.Migrations
+namespace BackgroundEmailSenderSample.Migrations
 {
     public partial class InitialMigration : Migration
     {

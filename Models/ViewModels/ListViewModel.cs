@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace background_email_sender_master.Models.ViewModels
+namespace BackgroundEmailSenderSample.Models.ViewModels
 {
     public class ListViewModel<T>
     {

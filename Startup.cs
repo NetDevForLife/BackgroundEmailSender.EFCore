@@ -1,4 +1,4 @@
-﻿using background_email_sender_master.Models.Services.Application;
+﻿using BackgroundEmailSenderSample.Models.Services.Application;
 using BackgroundEmailSenderSample.HostedServices;
 using BackgroundEmailSenderSample.Models.Options;
 using BackgroundEmailSenderSample.Models.Services.Infrastructure;
@@ -24,7 +24,7 @@ namespace BackgroundEmailSenderSample
         {
             services.AddMvc();
             services.AddSingleton<EmailSenderHostedService>();
-            services.AddSingleton<IBackgroundEmailSenderService, BackgroundEmailSenderService>();
+            services.AddTransient<IBackgroundEmailSenderService, BackgroundEmailSenderService>();
             
             services.AddDbContextPool<MyEmailSenderDbContext>(optionsBuilder => {
                 string connectionString = Configuration.GetSection("ConnectionStrings").GetValue<string>("Default");

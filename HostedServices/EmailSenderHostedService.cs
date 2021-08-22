@@ -2,9 +2,9 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using background_email_sender_master.Models.Entities;
-using background_email_sender_master.Models.Services.Application;
-using background_email_sender_master.Models.ViewModels;
+using BackgroundEmailSenderSample.Models.Entities;
+using BackgroundEmailSenderSample.Models.Services.Application;
+using BackgroundEmailSenderSample.Models.ViewModels;
 using BackgroundEmailSenderSample.Models.Options;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -36,18 +36,19 @@ namespace BackgroundEmailSenderSample.HostedServices
             this.backgroundEmailSenderService = backgroundEmailSenderService;
         }
 
-        public async Task SendEmailAsync(string email, string subject, string htmlMessage)
+        //public async Task SendEmailAsync(string email, string subject, string htmlMessage)
+        public async Task SendEmailAsync(Email model)
         {
-            Email message = new();
+            // Email message = new();
 
-            message.Id = message.Id ?? SequentialGuidGenerator.Instance.NewGuid().ToString();
-            message.Recipient = email;
-            message.Subject = subject;
-            message.Message = htmlMessage;
+            // message.Id = message.Id ?? SequentialGuidGenerator.Instance.NewGuid().ToString();
+            // message.Recipient = model.Recipient;
+            // message.Subject = model.Subject;
+            // message.Message = model.Message;
 
-            await backgroundEmailSenderService.SaveEmailAsync(message, token);
+            await backgroundEmailSenderService.SaveEmailAsync(model, token);
 
-            await backgroundEmailSenderService.SendEmailAsync(message, token);
+            await backgroundEmailSenderService.SendEmailAsync(model, token);
         }
 
         public async Task StartAsync(CancellationToken token)

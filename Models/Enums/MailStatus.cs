@@ -1,4 +1,4 @@
-namespace background_email_sender_master.Models.Enums
+namespace BackgroundEmailSenderSample.Models.Enums
 {
      public enum MailStatus
     {

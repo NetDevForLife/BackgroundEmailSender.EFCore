@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using background_email_sender_master.Models.Entities;
-using background_email_sender_master.Models.Enums;
-using background_email_sender_master.Models.ViewModels;
+using BackgroundEmailSenderSample.Models.Entities;
+using BackgroundEmailSenderSample.Models.Enums;
+using BackgroundEmailSenderSample.Models.ViewModels;
 using BackgroundEmailSenderSample.Models.Options;
 using BackgroundEmailSenderSample.Models.Services.Infrastructure;
 using MailKit.Net.Smtp;
@@ -15,7 +15,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
 
-namespace background_email_sender_master.Models.Services.Application
+namespace BackgroundEmailSenderSample.Models.Services.Application
 {
     public class BackgroundEmailSenderService : IBackgroundEmailSenderService
     {
@@ -35,6 +35,8 @@ namespace background_email_sender_master.Models.Services.Application
         {
             try
             {
+                await SaveEmailAsync(model, token);
+
                 var options = this.smtpOptionsMonitor.CurrentValue;
                 
                 using SmtpClient client = new SmtpClient();

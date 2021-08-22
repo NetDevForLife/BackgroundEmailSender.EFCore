@@ -1,6 +1,6 @@
-using background_email_sender_master.Models.Entities;
+using BackgroundEmailSenderSample.Models.Entities;
 
-namespace background_email_sender_master.Models.ViewModels
+namespace BackgroundEmailSenderSample.Models.ViewModels
 {
     public class EmailViewModel
     {
