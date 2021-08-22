@@ -4,12 +4,14 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using background_email_sender_master.Models.Entities;
 using background_email_sender_master.Models.Services.Application;
+using background_email_sender_master.Models.ViewModels;
 using BackgroundEmailSenderSample.Models.Options;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
+using SequentialGuid;
 
 namespace BackgroundEmailSenderSample.HostedServices
 {
@@ -36,17 +38,15 @@ namespace BackgroundEmailSenderSample.HostedServices
 
         public async Task SendEmailAsync(string email, string subject, string htmlMessage)
         {
-            Email message = new Email();
+            Email message = new();
 
-            message.Id = Guid.NewGuid().ToString();
+            message.Id = message.Id ?? SequentialGuidGenerator.Instance.NewGuid().ToString();
             message.Recipient = email;
             message.Subject = subject;
             message.Message = htmlMessage;
 
-            //SALTAGGIO EMAIL NEL DATABASE
             await backgroundEmailSenderService.SaveEmailAsync(message, token);
 
-            //INVIO EMAIL
             await backgroundEmailSenderService.SendEmailAsync(message, token);
         }
 
@@ -54,22 +54,23 @@ namespace BackgroundEmailSenderSample.HostedServices
         {
             logger.LogInformation("Starting background e-mail delivery");
 
-            // FormattableString query = $@"SELECT Id, Recipient, Subject, Message FROM EmailMessages WHERE Status NOT IN ({nameof(MailStatus.Sent)}, {nameof(MailStatus.Deleted)})";
-            // DataSet dataSet = await db.QueryAsync(query);
+            ListViewModel<EmailViewModel> email = await backgroundEmailSenderService.FindEmailAsync();
 
             try
             {
-            //     foreach (DataRow row in dataSet.Tables[0].Rows)
-            //     {
-            //         var message = CreateMessage(Convert.ToString(row["Recipient"]),
-            //                                     Convert.ToString(row["Subject"]),
-            //                                     Convert.ToString(row["Message"]),
-            //                                     Convert.ToString(row["Id"]));
+                foreach (EmailViewModel riga in email.Results)
+                {
+                    Email message = new();
 
-            //         await this.mailMessages.SendAsync(message, token);
-            //     }
+                    message.Recipient = riga.Message;
+                    message.Subject = riga.Subject;
+                    message.Message = riga.Message;
+                    message.Id = riga.Id;
 
-            //     logger.LogInformation("Email delivery started: {count} message(s) were resumed for delivery", dataSet.Tables[0].Rows.Count);
+                    await backgroundEmailSenderService.SendEmailAsync(message, token);
+                }
+
+                logger.LogInformation("Email delivery started: {count} message(s) were resumed for delivery", email.TotalCount);
 
                 deliveryCancellationTokenSource = new CancellationTokenSource();
                 deliveryTask = DeliverAsync(deliveryCancellationTokenSource.Token);
@@ -108,27 +109,10 @@ namespace BackgroundEmailSenderSample.HostedServices
             while (!token.IsCancellationRequested)
             {
                 MimeMessage message = null;
-                Email msg = new Email();
+                Email msg = new();
                 
                 try
                 {
-                    // message = await mailMessages.ReceiveAsync(token);
-
-                    // var options = this.optionsMonitor.CurrentValue;
-                    // using var client = new SmtpClient();
-
-                    // await client.ConnectAsync(options.Host, options.Port, options.Security, token);
-                    // if (!string.IsNullOrEmpty(options.Username))
-                    // {
-                    //     await client.AuthenticateAsync(options.Username, options.Password, token);
-                    // }
-
-                    // await client.SendAsync(message, token);
-                    // await client.DisconnectAsync(true, token);
-
-                    // //await db.CommandAsync($"UPDATE EmailMessages SET Status={nameof(MailStatus.Sent)} WHERE Id={message.MessageId}", token);
-                    // logger.LogInformation($"E-mail sent successfully to {message.To}");
-
                     message = await mailMessages.ReceiveAsync(token);
 
                     msg.Id = message.MessageId;
@@ -137,8 +121,8 @@ namespace BackgroundEmailSenderSample.HostedServices
                     msg.Message = msg.Message;
 
                     await backgroundEmailSenderService.SendEmailAsync(msg, token);
+                    await backgroundEmailSenderService.UpdateEmailAsync(msg, token);
                     
-                    //await db.CommandAsync($"UPDATE EmailMessages SET Status={nameof(MailStatus.Sent)} WHERE Id={message.MessageId}", token);
                     logger.LogInformation($"E-mail sent successfully to {message.To}");
                 }
                 catch (OperationCanceledException)

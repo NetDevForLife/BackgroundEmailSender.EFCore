@@ -1,9 +1,16 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using background_email_sender_master.Models.Entities;
+using background_email_sender_master.Models.Enums;
+using background_email_sender_master.Models.ViewModels;
 using BackgroundEmailSenderSample.Models.Options;
+using BackgroundEmailSenderSample.Models.Services.Infrastructure;
 using MailKit.Net.Smtp;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
@@ -14,10 +21,13 @@ namespace background_email_sender_master.Models.Services.Application
     {
         private readonly IOptionsMonitor<SmtpOptions> smtpOptionsMonitor;
         private readonly ILogger<BackgroundEmailSenderService> logger;
+        private readonly MyEmailSenderDbContext dbContext;
         
-        public BackgroundEmailSenderService(IOptionsMonitor<SmtpOptions> smtpOptionsMonitor, ILogger<BackgroundEmailSenderService> logger)
+        public BackgroundEmailSenderService(IOptionsMonitor<SmtpOptions> smtpOptionsMonitor, ILogger<BackgroundEmailSenderService> logger,
+                                            MyEmailSenderDbContext dbContext)
         {
             this.logger = logger;
+            this.dbContext = dbContext;
             this.smtpOptionsMonitor = smtpOptionsMonitor;
         }
 
@@ -74,24 +84,57 @@ namespace background_email_sender_master.Models.Services.Application
             }
         }
 
-        public Task SaveEmailAsync(Email input, CancellationToken token)
+        public async Task SaveEmailAsync(Email input, CancellationToken token)
         {
-            //Salvataggio della mail su database
+            dbContext.Add(input);
 
-            // int affectedRows = await db.CommandAsync($@"INSERT INTO EmailMessages (Id, Recipient, Subject, Message, SenderCount, Status) 
-            //                                             VALUES ({message.MessageId}, {email}, {subject}, {htmlMessage}, 0, {nameof(MailStatus.InProgress)})");
-
-            // if (affectedRows != 1)
-            // {
-            //     throw new InvalidOperationException($"Could not persist email message to {email}");
-            // }
-            
-            throw new Exception();
+            try
+            {
+                await dbContext.SaveChangesAsync();
+            }
+            catch (DbUpdateException exc) when ((exc.InnerException as SqliteException)?.SqliteErrorCode == 19)
+            {
+                throw new Exception();
+            }
         }
 
-        public Task DeleteEmailAsync(Email input, CancellationToken token)
+        public async Task UpdateEmailAsync(Email model, CancellationToken token)
         {
-            throw new Exception();
+            Email email = await dbContext.Emails.FindAsync(model.Id);
+
+            email.ChangeStatus(nameof(MailStatus.Sent));
+
+            try
+            {
+                await dbContext.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                throw new Exception();
+            }
+        }
+
+        public async Task<ListViewModel<EmailViewModel>> FindEmailAsync()
+        {
+            IQueryable<Email> baseQuery = dbContext.Emails;
+
+            IQueryable<Email> queryLinq = baseQuery
+                .Where(email => email.Status != nameof(MailStatus.Sent) || email.Status != nameof(MailStatus.Sent))
+                .AsNoTracking();
+
+            List<EmailViewModel> emails = await queryLinq
+                .Select(email => EmailViewModel.FromEntity(email))
+                .ToListAsync();
+            
+            int totalCount = await queryLinq.CountAsync();
+
+            ListViewModel<EmailViewModel> result = new()
+            {
+                Results = emails,
+                TotalCount = totalCount
+            };
+
+            return result;
         }
     }
 }
