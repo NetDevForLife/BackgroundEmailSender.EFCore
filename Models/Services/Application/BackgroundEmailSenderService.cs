@@ -35,8 +35,6 @@ namespace BackgroundEmailSenderSample.Models.Services.Application
         {
             try
             {
-                await SaveEmailAsync(model, token);
-
                 var options = this.smtpOptionsMonitor.CurrentValue;
                 
                 using SmtpClient client = new SmtpClient();
@@ -159,7 +157,7 @@ namespace BackgroundEmailSenderSample.Models.Services.Application
             IQueryable<Email> baseQuery = dbContext.Emails;
 
             IQueryable<Email> queryLinq = baseQuery
-                .Where(email => email.Status != nameof(MailStatus.Sent) || email.Status != nameof(MailStatus.Sent))
+                .Where(email => email.Status == nameof(MailStatus.InProgress))
                 .AsNoTracking();
 
             List<EmailViewModel> emails = await queryLinq

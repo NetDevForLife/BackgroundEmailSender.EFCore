@@ -23,9 +23,10 @@ namespace BackgroundEmailSenderSample
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc();
-            services.AddSingleton<EmailSenderHostedService>();
+
+            services.AddTransient<EmailSenderHostedService>();
             services.AddTransient<IBackgroundEmailSenderService, BackgroundEmailSenderService>();
-            
+
             services.AddDbContextPool<MyEmailSenderDbContext>(optionsBuilder => {
                 string connectionString = Configuration.GetSection("ConnectionStrings").GetValue<string>("Default");
                 optionsBuilder.UseSqlite(connectionString);

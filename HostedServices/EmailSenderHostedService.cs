@@ -11,7 +11,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
-using SequentialGuid;
 
 namespace BackgroundEmailSenderSample.HostedServices
 {
@@ -36,18 +35,8 @@ namespace BackgroundEmailSenderSample.HostedServices
             this.backgroundEmailSenderService = backgroundEmailSenderService;
         }
 
-        //public async Task SendEmailAsync(string email, string subject, string htmlMessage)
         public async Task SendEmailAsync(Email model)
         {
-            // Email message = new();
-
-            // message.Id = message.Id ?? SequentialGuidGenerator.Instance.NewGuid().ToString();
-            // message.Recipient = model.Recipient;
-            // message.Subject = model.Subject;
-            // message.Message = model.Message;
-
-            await backgroundEmailSenderService.SaveEmailAsync(model, token);
-
             await backgroundEmailSenderService.SendEmailAsync(model, token);
         }
 

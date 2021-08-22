@@ -28,7 +28,7 @@ namespace BackgroundEmailSenderSample.Controllers
             message.SenderCount = 0;
             message.Status = nameof(MailStatus.InProgress);
 
-            await backgroundEmailSenderService.SendEmailAsync(message, token);
+            await backgroundEmailSenderService.SaveEmailAsync(message, token);
             
             return RedirectToAction(nameof(ThankYou));
         }
