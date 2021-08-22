@@ -114,6 +114,44 @@ namespace background_email_sender_master.Models.Services.Application
             }
         }
 
+        public async Task UpdateStatusAsync(Email model, CancellationToken token)
+        {
+            Email email = await dbContext.Emails.FindAsync(model.Id);
+
+            email.ChangeStatus(nameof(MailStatus.Deleted));
+
+            try
+            {
+                await dbContext.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                throw new Exception();
+            }
+        }
+
+        public async Task UpdateCounterAsync(Email model, CancellationToken token)
+        {
+            int counter = 0;
+            int newCounter = 0;
+
+            Email email = await dbContext.Emails.FindAsync(model.Id);
+
+            counter = model.SenderCount;
+            newCounter = counter + 1;
+
+            email.ChangeSenderCount(newCounter);
+
+            try
+            {
+                await dbContext.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                throw new Exception();
+            }
+        }
+
         public async Task<ListViewModel<EmailViewModel>> FindEmailAsync()
         {
             IQueryable<Email> baseQuery = dbContext.Emails;
@@ -135,6 +173,23 @@ namespace background_email_sender_master.Models.Services.Application
             };
 
             return result;
+        }
+
+        public async Task<EmailDetailViewModel> FindMessageAsync(Email model, CancellationToken token)
+        {
+            IQueryable<EmailDetailViewModel> queryLinq = dbContext.Emails
+                .AsNoTracking()
+                .Where(email => email.Id == model.Id)
+                .Select(email => EmailDetailViewModel.FromEntity(email));
+
+            EmailDetailViewModel viewModel = await queryLinq.FirstOrDefaultAsync();
+
+            if (viewModel == null)
+            {
+                throw new Exception();
+            }
+
+            return viewModel;
         }
     }
 }

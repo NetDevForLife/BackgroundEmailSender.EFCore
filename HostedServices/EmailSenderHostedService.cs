@@ -106,24 +106,25 @@ namespace BackgroundEmailSenderSample.HostedServices
         public async Task DeliverAsync(CancellationToken token)
         {
             logger.LogInformation("E-mail background delivery started");
+
             while (!token.IsCancellationRequested)
             {
-                MimeMessage message = null;
-                Email msg = new();
-                
+                MimeMessage msg = null;
+                Email message= new();
+
                 try
                 {
-                    message = await mailMessages.ReceiveAsync(token);
+                    msg = await mailMessages.ReceiveAsync(token);
 
-                    msg.Id = message.MessageId;
-                    msg.Recipient = message.To.ToString();
-                    msg.Subject = msg.Subject;
-                    msg.Message = msg.Message;
+                    message.Id = msg.MessageId;
+                    message.Recipient = msg.To.ToString();
+                    message.Subject = msg.Subject;
+                    message.Message = msg.TextBody;
 
-                    await backgroundEmailSenderService.SendEmailAsync(msg, token);
-                    await backgroundEmailSenderService.UpdateEmailAsync(msg, token);
+                    await backgroundEmailSenderService.SendEmailAsync(message, token);
+                    await backgroundEmailSenderService.UpdateEmailAsync(message, token);
                     
-                    logger.LogInformation($"E-mail sent successfully to {message.To}");
+                    logger.LogInformation($"E-mail sent successfully to {msg.To}");
                 }
                 catch (OperationCanceledException)
                 {
@@ -131,24 +132,33 @@ namespace BackgroundEmailSenderSample.HostedServices
                 }
                 catch (Exception sendException)
                 {
-                    var recipient = message?.To[0];
+                    var recipient = msg?.To[0];
                     logger.LogError(sendException, "Couldn't send an e-mail to {recipient}", recipient);
 
+                    EmailDetailViewModel viewModel = await backgroundEmailSenderService.FindMessageAsync(message, token);
+
+                    int counter = 0;
+
+                    if (viewModel != null)
                     try
                     {
-                        //bool shouldRequeue = await db.QueryScalarAsync<bool>($"UPDATE EmailMessages SET SenderCount = SenderCount + 1, Status=CASE WHEN SenderCount < {optionsMonitor.CurrentValue.MaxSenderCount} THEN Status ELSE {nameof(MailStatus.Deleted)} END WHERE Id={message.MessageId}; SELECT COUNT(*) FROM EmailMessages WHERE Id={message.MessageId} AND Status NOT IN ({nameof(MailStatus.Deleted)}, {nameof(MailStatus.Sent)})", token);
-                        bool shouldRequeue = false;
+                        counter = Convert.ToInt32(viewModel.SenderCount);
 
-                        if (shouldRequeue)
+                        if (counter == 25)
                         {
-                            await backgroundEmailSenderService.SendEmailAsync(msg, token);
+                            await backgroundEmailSenderService.UpdateStatusAsync(message, token);
+                        }
+                        else
+                        {
+                            await backgroundEmailSenderService.UpdateCounterAsync(message, token);
+
+                            await backgroundEmailSenderService.SendEmailAsync(message, token);
                         }
                     }
                     catch (Exception requeueException)
                     {
                         logger.LogError(requeueException, "Couldn't requeue message to {0}", recipient);
                     }
-
                     await Task.Delay(optionsMonitor.CurrentValue.DelayOnError, token);
                 }
             }

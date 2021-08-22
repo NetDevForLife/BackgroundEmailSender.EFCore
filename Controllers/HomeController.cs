@@ -32,6 +32,5 @@ namespace BackgroundEmailSenderSample.Controllers
         public IActionResult ThankYou() {
             return View();
         }
-
     }
 }
