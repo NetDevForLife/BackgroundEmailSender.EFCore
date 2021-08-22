@@ -1,6 +1,8 @@
 ﻿using System;
+using BackgroundEmailSenderSample.HostedServices;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
 
 namespace BackgroundEmailSenderSample
 {
@@ -14,7 +16,6 @@ namespace BackgroundEmailSenderSample
         public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
                 .UseShutdownTimeout(TimeSpan.FromSeconds(10))
-                .UseEnvironment("Development")
                 .UseStartup<Startup>();
     }
 }

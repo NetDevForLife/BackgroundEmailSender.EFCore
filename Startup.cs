@@ -24,7 +24,9 @@ namespace BackgroundEmailSenderSample
         {
             services.AddMvc();
 
-            services.AddTransient<EmailSenderHostedService>();
+            services.AddSingleton<EmailSenderHostedService>();
+            services.AddSingleton<IHostedService>(serviceProvider => serviceProvider.GetService<EmailSenderHostedService>());
+           
             services.AddTransient<IBackgroundEmailSenderService, BackgroundEmailSenderService>();
 
             services.AddDbContextPool<MyEmailSenderDbContext>(optionsBuilder => {
