@@ -16,28 +16,27 @@ namespace BackgroundEmailSenderSample.HostedServices
 {
     public class EmailSenderHostedService : IHostedService, IDisposable
     {
-        private readonly IBackgroundEmailSenderService backgroundEmailSenderService;
-        private readonly IOptionsMonitor<SmtpOptions> optionsMonitor;
         private readonly BufferBlock<MimeMessage> mailMessages;
         private readonly ILogger logger;
-
-        private CancellationToken token;
+        private readonly IOptionsMonitor<SmtpOptions> optionsMonitor;
+        private readonly IBackgroundEmailSenderService backgroundEmailSenderService;
         private CancellationTokenSource deliveryCancellationTokenSource;
         private Task deliveryTask;
 
-        public EmailSenderHostedService(IConfiguration configuration, IBackgroundEmailSenderService backgroundEmailSenderService, 
-                                        ILogger<EmailSenderHostedService> logger, IOptionsMonitor<SmtpOptions> optionsMonitor, CancellationToken token)
+        public EmailSenderHostedService(IConfiguration configuration, 
+                                        IBackgroundEmailSenderService backgroundEmailSenderService,
+                                        IOptionsMonitor<SmtpOptions> optionsMonitor,
+                                        ILogger<EmailSenderHostedService> logger)
         {
-            this.token = token;
-            this.logger = logger;
             this.optionsMonitor = optionsMonitor;
+            this.logger = logger;
             this.mailMessages = new BufferBlock<MimeMessage>();
             this.backgroundEmailSenderService = backgroundEmailSenderService;
         }
 
         public async Task SendEmailAsync(Email model)
         {
-            await backgroundEmailSenderService.SendEmailAsync(model, token);
+            await backgroundEmailSenderService.SendEmailAsync(model);
         }
 
         public async Task StartAsync(CancellationToken token)
@@ -52,12 +51,12 @@ namespace BackgroundEmailSenderSample.HostedServices
                 {
                     Email message = new();
 
-                    message.Recipient = riga.Message;
+                    message.Recipient = riga.Recipient;
                     message.Subject = riga.Subject;
                     message.Message = riga.Message;
                     message.Id = riga.Id;
 
-                    await backgroundEmailSenderService.SendEmailAsync(message, token);
+                    await backgroundEmailSenderService.SendEmailAsync(message);
                 }
 
                 logger.LogInformation("Email delivery started: {count} message(s) were resumed for delivery", email.TotalCount);
@@ -111,8 +110,8 @@ namespace BackgroundEmailSenderSample.HostedServices
                     message.Subject = msg.Subject;
                     message.Message = msg.TextBody;
 
-                    await backgroundEmailSenderService.SendEmailAsync(message, token);
-                    await backgroundEmailSenderService.UpdateEmailAsync(message, token);
+                    await backgroundEmailSenderService.SendEmailAsync(message);
+                    await backgroundEmailSenderService.UpdateEmailAsync(message);
                     
                     logger.LogInformation($"E-mail sent successfully to {msg.To}");
                 }
@@ -125,7 +124,7 @@ namespace BackgroundEmailSenderSample.HostedServices
                     var recipient = msg?.To[0];
                     logger.LogError(sendException, "Couldn't send an e-mail to {recipient}", recipient);
 
-                    EmailDetailViewModel viewModel = await backgroundEmailSenderService.FindMessageAsync(message, token);
+                    EmailDetailViewModel viewModel = await backgroundEmailSenderService.FindMessageAsync(message);
 
                     int counter = 0;
 
@@ -136,13 +135,13 @@ namespace BackgroundEmailSenderSample.HostedServices
 
                         if (counter == 25)
                         {
-                            await backgroundEmailSenderService.UpdateStatusAsync(message, token);
+                            await backgroundEmailSenderService.UpdateStatusAsync(message);
                         }
                         else
                         {
-                            await backgroundEmailSenderService.UpdateCounterAsync(message, token);
+                            await backgroundEmailSenderService.UpdateCounterAsync(message);
 
-                            await backgroundEmailSenderService.SendEmailAsync(message, token);
+                            await backgroundEmailSenderService.SendEmailAsync(message);
                         }
                     }
                     catch (Exception requeueException)

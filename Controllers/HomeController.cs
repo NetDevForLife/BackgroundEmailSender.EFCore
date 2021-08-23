@@ -17,7 +17,7 @@ namespace BackgroundEmailSenderSample.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> SendMail(EmailInputModel inputModel, [FromServices] IBackgroundEmailSenderService backgroundEmailSenderService, CancellationToken token) 
+        public async Task<IActionResult> SendMail(EmailInputModel inputModel, [FromServices] IBackgroundEmailSenderService backgroundEmailSenderService) 
         {
             Email message = new Email();
 
@@ -28,7 +28,7 @@ namespace BackgroundEmailSenderSample.Controllers
             message.SenderCount = 0;
             message.Status = nameof(MailStatus.InProgress);
 
-            await backgroundEmailSenderService.SaveEmailAsync(message, token);
+            await backgroundEmailSenderService.SaveEmailAsync(message);
             
             return RedirectToAction(nameof(ThankYou));
         }

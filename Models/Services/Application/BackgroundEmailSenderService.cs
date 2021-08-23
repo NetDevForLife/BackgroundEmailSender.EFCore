@@ -23,7 +23,8 @@ namespace BackgroundEmailSenderSample.Models.Services.Application
         private readonly ILogger<BackgroundEmailSenderService> logger;
         private readonly MyEmailSenderDbContext dbContext;
         
-        public BackgroundEmailSenderService(IOptionsMonitor<SmtpOptions> smtpOptionsMonitor, ILogger<BackgroundEmailSenderService> logger,
+        public BackgroundEmailSenderService(IOptionsMonitor<SmtpOptions> smtpOptionsMonitor, 
+                                            ILogger<BackgroundEmailSenderService> logger,
                                             MyEmailSenderDbContext dbContext)
         {
             this.logger = logger;
@@ -31,7 +32,7 @@ namespace BackgroundEmailSenderSample.Models.Services.Application
             this.smtpOptionsMonitor = smtpOptionsMonitor;
         }
 
-        public async Task SendEmailAsync(Email model, CancellationToken token)
+        public async Task SendEmailAsync(Email model)
         {
             try
             {
@@ -78,13 +79,13 @@ namespace BackgroundEmailSenderSample.Models.Services.Application
                 await client.SendAsync(message);
                 await client.DisconnectAsync(true);
             }
-            catch
+            catch(Exception exc)
             {
-                throw new Exception();
+                throw new Exception(exc.Message);
             }
         }
 
-        public async Task SaveEmailAsync(Email input, CancellationToken token)
+        public async Task SaveEmailAsync(Email input)
         {
             dbContext.Add(input);
 
@@ -98,7 +99,7 @@ namespace BackgroundEmailSenderSample.Models.Services.Application
             }
         }
 
-        public async Task UpdateEmailAsync(Email model, CancellationToken token)
+        public async Task UpdateEmailAsync(Email model)
         {
             Email email = await dbContext.Emails.FindAsync(model.Id);
 
@@ -114,7 +115,7 @@ namespace BackgroundEmailSenderSample.Models.Services.Application
             }
         }
 
-        public async Task UpdateStatusAsync(Email model, CancellationToken token)
+        public async Task UpdateStatusAsync(Email model)
         {
             Email email = await dbContext.Emails.FindAsync(model.Id);
 
@@ -130,7 +131,7 @@ namespace BackgroundEmailSenderSample.Models.Services.Application
             }
         }
 
-        public async Task UpdateCounterAsync(Email model, CancellationToken token)
+        public async Task UpdateCounterAsync(Email model)
         {
             int counter = 0;
             int newCounter = 0;
@@ -175,7 +176,7 @@ namespace BackgroundEmailSenderSample.Models.Services.Application
             return result;
         }
 
-        public async Task<EmailDetailViewModel> FindMessageAsync(Email model, CancellationToken token)
+        public async Task<EmailDetailViewModel> FindMessageAsync(Email model)
         {
             IQueryable<EmailDetailViewModel> queryLinq = dbContext.Emails
                 .AsNoTracking()

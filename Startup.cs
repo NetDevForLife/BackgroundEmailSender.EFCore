@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.AspNetCore.Identity.UI.Services;
 
 namespace BackgroundEmailSenderSample
 {
@@ -23,17 +24,14 @@ namespace BackgroundEmailSenderSample
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc();
-
-            services.AddSingleton<EmailSenderHostedService>();
-            services.AddSingleton<IHostedService>(serviceProvider => serviceProvider.GetService<EmailSenderHostedService>());
-           
+            services.AddScoped<EmailSenderHostedService>();
+            services.AddScoped<IHostedService, EmailSenderHostedService>();
+            
             services.AddTransient<IBackgroundEmailSenderService, BackgroundEmailSenderService>();
-
             services.AddDbContextPool<MyEmailSenderDbContext>(optionsBuilder => {
                 string connectionString = Configuration.GetSection("ConnectionStrings").GetValue<string>("Default");
                 optionsBuilder.UseSqlite(connectionString);
             });
-            
             services.Configure<SmtpOptions>(Configuration.GetSection("Smtp"));
         }
 

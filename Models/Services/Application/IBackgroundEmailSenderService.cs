@@ -8,14 +8,14 @@ namespace BackgroundEmailSenderSample.Models.Services.Application
     public interface IBackgroundEmailSenderService
     {
         Task<ListViewModel<EmailViewModel>> FindEmailAsync();
-        Task<EmailDetailViewModel> FindMessageAsync(Email model, CancellationToken token);
+        Task<EmailDetailViewModel> FindMessageAsync(Email model);
         
-        Task SendEmailAsync(Email model, CancellationToken token);
+        Task SendEmailAsync(Email model);
         
-        Task SaveEmailAsync(Email model, CancellationToken token);
+        Task SaveEmailAsync(Email model);
 
-        Task UpdateEmailAsync(Email model, CancellationToken token);
-        Task UpdateStatusAsync(Email model, CancellationToken token);
-        Task UpdateCounterAsync(Email model, CancellationToken token);
+        Task UpdateEmailAsync(Email model);
+        Task UpdateStatusAsync(Email model);
+        Task UpdateCounterAsync(Email model);
     }
 }
