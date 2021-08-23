@@ -8,4 +8,4 @@ Error encountered while debugging with Visual Studio Code:
 >Si è verificata un'eccezione: CLR/System.InvalidOperationException
 Eccezione non gestita di tipo 'System.InvalidOperationException' in System.Private.CoreLib.dll: 'Cannot consume scoped service 'System.Collections.Generic.IEnumerable`1[Microsoft.Extensions.Hosting.IHostedService]' from singleton 'Microsoft.AspNetCore.Hosting.HostedServiceExecutor'.'
 
->It also sends emails only when the application is started, subsequently no email queue management process is performed in the background.
+It also sends emails only when the application is started, subsequently no email queue management process is performed in the background.
