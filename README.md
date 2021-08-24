@@ -1,5 +1,5 @@
 # BackgroundEmailSender-Test
-Unfinished project, still under development and code optimization
+This application is an updated clone with .NET 5.x and Entity Framework Core of the homonymous application of the one developed by BrightSoul
 
 ## Attention
 At the moment it occurs in the build phase the error is found here -> https://github.com/AngeloDotNet/BackgroundEmailSender-Test/blob/master/Startup.cs#L28
