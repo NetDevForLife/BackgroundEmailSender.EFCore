@@ -2,7 +2,7 @@
 This application is an updated clone with .NET 5.x and Entity Framework Core of the homonymous application of the one developed by BrightSoul
 
 ## Notice
-The bug indicated below has been fixed, for a working version of this application, download the version 2 branch code.
+The bug indicated below (https://github.com/AngeloDotNet/BackgroundEmailSender-EFCore#attention) has been fixed, for a working version of this application, download the version 2 branch code.
 
 ## Thanks
 I thank Moreno G. for providing me with the appropriate information so that I can solve the bug that occurred during the start of the project compilation.
