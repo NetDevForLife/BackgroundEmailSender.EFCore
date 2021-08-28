@@ -12,8 +12,5 @@ namespace BackgroundEmailSenderSample.Models.InputModels
 
         [Required(ErrorMessage = "Il messaggio è obbligatorio"), Display(Name = "Messaggio")]
         public string htmlMessage { get; set; }
-
-        // [Display(Name = "Allegato/i")]
-        // public List<IFormFile> attachments { get; set; }
     }
 }

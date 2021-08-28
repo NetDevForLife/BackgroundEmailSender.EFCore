@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using BackgroundEmailSenderSample.Models.Entities;
 using BackgroundEmailSenderSample.Models.Enums;
@@ -23,8 +22,7 @@ namespace BackgroundEmailSenderSample.Models.Services.Application
         private readonly ILogger<BackgroundEmailSenderService> logger;
         private readonly MyEmailSenderDbContext dbContext;
         
-        public BackgroundEmailSenderService(IOptionsMonitor<SmtpOptions> smtpOptionsMonitor, 
-                                            ILogger<BackgroundEmailSenderService> logger,
+        public BackgroundEmailSenderService(IOptionsMonitor<SmtpOptions> smtpOptionsMonitor, ILogger<BackgroundEmailSenderService> logger, 
                                             MyEmailSenderDbContext dbContext)
         {
             this.logger = logger;
@@ -54,24 +52,6 @@ namespace BackgroundEmailSenderSample.Models.Services.Application
                 message.Subject = model.Subject;
 
                 var builder = new BodyBuilder();
-
-                // if (model.attachments != null)
-                // {
-                //     byte[] fileBytes;
-                //     foreach (var file in model.attachments)
-                //     {
-                //         if (file.Length > 0)
-                //         {
-                //             using (var ms = new MemoryStream())
-                //             {
-                //                 file.CopyTo(ms);
-                //                 fileBytes = ms.ToArray();
-                //             }
-
-                //             builder.Attachments.Add(file.FileName, fileBytes, ContentType.Parse(file.ContentType));
-                //         }
-                //     }
-                // }
 
                 builder.HtmlBody = model.Message;
                 message.Body = builder.ToMessageBody();
