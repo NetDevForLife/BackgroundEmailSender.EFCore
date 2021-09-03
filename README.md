@@ -1,4 +1,4 @@
-# BackgroundEmailSender-Test
+# BackgroundEmailSender-EFCore
 This application is an updated clone with .NET 5.x and Entity Framework Core of the homonymous application of the one developed by BrightSoul
 
 ## Thanks
