@@ -11,37 +11,42 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace BackgroundEmailSenderSample.HostedServices
 {
     public class EmailSenderHostedService : IHostedService, IDisposable
     {
         private readonly BufferBlock<MimeMessage> mailMessages;
+        private readonly IServiceScopeFactory serviceScopeFactory;
         private readonly ILogger logger;
         private readonly IOptionsMonitor<SmtpOptions> optionsMonitor;
-        private readonly IBackgroundEmailSenderService backgroundEmailSenderService;
+
         private CancellationTokenSource deliveryCancellationTokenSource;
         private Task deliveryTask;
 
-        public EmailSenderHostedService(IConfiguration configuration, 
-                                        IBackgroundEmailSenderService backgroundEmailSenderService,
-                                        IOptionsMonitor<SmtpOptions> optionsMonitor,
-                                        ILogger<EmailSenderHostedService> logger)
+        public EmailSenderHostedService(IConfiguration configuration, IServiceScopeFactory serviceScopeFactory, IOptionsMonitor<SmtpOptions> optionsMonitor, ILogger<EmailSenderHostedService> logger)
         {
             this.optionsMonitor = optionsMonitor;
+            this.serviceScopeFactory = serviceScopeFactory;
             this.logger = logger;
             this.mailMessages = new BufferBlock<MimeMessage>();
-            this.backgroundEmailSenderService = backgroundEmailSenderService;
         }
 
         public async Task SendEmailAsync(Email model)
         {
-            await backgroundEmailSenderService.SendEmailAsync(model);
+            using var serviceScope = serviceScopeFactory.CreateScope();
+
+            var backgroundEmailSenderService = serviceScope.ServiceProvider.GetRequiredService<IBackgroundEmailSenderService>();
+            await backgroundEmailSenderService.SendEmailAsync(model); 
         }
 
         public async Task StartAsync(CancellationToken token)
         {
             logger.LogInformation("Starting background e-mail delivery");
+
+            using var serviceScope = serviceScopeFactory.CreateScope();
+            var backgroundEmailSenderService = serviceScope.ServiceProvider.GetRequiredService<IBackgroundEmailSenderService>();
 
             ListViewModel<EmailViewModel> email = await backgroundEmailSenderService.FindEmailAsync();
 
@@ -96,6 +101,9 @@ namespace BackgroundEmailSenderSample.HostedServices
         {
             logger.LogInformation("E-mail background delivery started");
 
+            using var serviceScope = serviceScopeFactory.CreateScope();
+            var backgroundEmailSenderService = serviceScope.ServiceProvider.GetRequiredService<IBackgroundEmailSenderService>();
+
             while (!token.IsCancellationRequested)
             {
                 MimeMessage msg = null;
@@ -129,25 +137,28 @@ namespace BackgroundEmailSenderSample.HostedServices
                     int counter = 0;
 
                     if (viewModel != null)
-                    try
                     {
-                        counter = Convert.ToInt32(viewModel.SenderCount);
-
-                        if (counter == 25)
+                        try
                         {
-                            await backgroundEmailSenderService.UpdateStatusAsync(message);
+                            counter = Convert.ToInt32(viewModel.SenderCount);
+
+                            if (counter == 25)
+                            {
+                                await backgroundEmailSenderService.UpdateStatusAsync(message);
+                            }
+                            else
+                            {
+                                await backgroundEmailSenderService.UpdateCounterAsync(message);
+
+                                await backgroundEmailSenderService.SendEmailAsync(message);
+                            }
                         }
-                        else
+                        catch (Exception requeueException)
                         {
-                            await backgroundEmailSenderService.UpdateCounterAsync(message);
-
-                            await backgroundEmailSenderService.SendEmailAsync(message);
+                            logger.LogError(requeueException, "Couldn't requeue message to {0}", recipient);
                         }
                     }
-                    catch (Exception requeueException)
-                    {
-                        logger.LogError(requeueException, "Couldn't requeue message to {0}", recipient);
-                    }
+                    
                     await Task.Delay(optionsMonitor.CurrentValue.DelayOnError, token);
                 }
             }
