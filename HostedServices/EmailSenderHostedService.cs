@@ -39,6 +39,7 @@ namespace BackgroundEmailSenderSample.HostedServices
             var backgroundEmailSenderService = serviceScope.ServiceProvider.GetRequiredService<IBackgroundEmailSenderService>();
 
             await backgroundEmailSenderService.SaveEmailAsync(model);
+            await backgroundEmailSenderService.SendEmailAsync(model);
         }
 
         public async Task StartAsync(CancellationToken token)
