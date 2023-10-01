@@ -13,67 +13,64 @@ using Microsoft.Extensions.Options;
 using MimeKit;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace BackgroundEmailSenderSample.HostedServices
+namespace BackgroundEmailSenderSample.HostedServices;
+
+public class EmailSenderHostedService : IHostedService, IDisposable
 {
-    public class EmailSenderHostedService : IHostedService, IDisposable
+    private readonly BufferBlock<MimeMessage> mailMessages;
+    private readonly IServiceScopeFactory serviceScopeFactory;
+    private readonly ILogger logger;
+    private readonly IOptionsMonitor<SmtpOptions> optionsMonitor;
+
+    private CancellationTokenSource deliveryCancellationTokenSource;
+    private Task deliveryTask;
+
+    public EmailSenderHostedService(IConfiguration configuration, IServiceScopeFactory serviceScopeFactory, IOptionsMonitor<SmtpOptions> optionsMonitor, ILogger<EmailSenderHostedService> logger)
     {
-        private readonly BufferBlock<MimeMessage> mailMessages;
-        private readonly IServiceScopeFactory serviceScopeFactory;
-        private readonly ILogger logger;
-        private readonly IOptionsMonitor<SmtpOptions> optionsMonitor;
+        this.optionsMonitor = optionsMonitor;
+        this.serviceScopeFactory = serviceScopeFactory;
+        this.logger = logger;
+        this.mailMessages = new BufferBlock<MimeMessage>();
+    }
 
-        private CancellationTokenSource deliveryCancellationTokenSource;
-        private Task deliveryTask;
+    public async Task SendEmailAsync(Email model)
+    {
+        using var serviceScope = serviceScopeFactory.CreateScope();
+        var backgroundEmailSenderService = serviceScope.ServiceProvider.GetRequiredService<IBackgroundEmailSenderService>();
 
-        public EmailSenderHostedService(IConfiguration configuration, IServiceScopeFactory serviceScopeFactory, IOptionsMonitor<SmtpOptions> optionsMonitor, ILogger<EmailSenderHostedService> logger)
+        await backgroundEmailSenderService.SaveEmailAsync(model);
+        await backgroundEmailSenderService.SendEmailAsync(model);
+    }
+
+    public async Task StartAsync(CancellationToken token)
+    {
+        logger.LogInformation("Starting background e-mail delivery");
+
+        using var serviceScope = serviceScopeFactory.CreateScope();
+        var backgroundEmailSenderService = serviceScope.ServiceProvider.GetRequiredService<IBackgroundEmailSenderService>();
+
+        ListViewModel<EmailViewModel> email = await backgroundEmailSenderService.FindEmailAsync();
+
+        try
         {
-            this.optionsMonitor = optionsMonitor;
-            this.serviceScopeFactory = serviceScopeFactory;
-            this.logger = logger;
-            this.mailMessages = new BufferBlock<MimeMessage>();
-        }
-
-        public async Task SendEmailAsync(Email model)
-        {
-            using var serviceScope = serviceScopeFactory.CreateScope();
-            var backgroundEmailSenderService = serviceScope.ServiceProvider.GetRequiredService<IBackgroundEmailSenderService>();
-
-            await backgroundEmailSenderService.SaveEmailAsync(model);
-            await backgroundEmailSenderService.SendEmailAsync(model);
-        }
-
-        public async Task StartAsync(CancellationToken token)
-        {
-            logger.LogInformation("Starting background e-mail delivery");
-
-            using var serviceScope = serviceScopeFactory.CreateScope();
-            var backgroundEmailSenderService = serviceScope.ServiceProvider.GetRequiredService<IBackgroundEmailSenderService>();
-
-            ListViewModel<EmailViewModel> email = await backgroundEmailSenderService.FindEmailAsync();
-
-            try
+            foreach (EmailViewModel riga in email.Results)
             {
-                foreach (EmailViewModel riga in email.Results)
-                {
-                    Email message = new();
+                Email message = new();
 
-                    message.Recipient = riga.Recipient;
-                    message.Subject = riga.Subject;
-                    message.Message = riga.Message;
-                    message.Id = riga.Id;
+                message.Recipient = riga.Recipient;
+                message.Subject = riga.Subject;
+                message.Message = riga.Message;
+                message.Id = riga.Id;
 
-                    await backgroundEmailSenderService.SendEmailAsync(message);
-                }
-
-                logger.LogInformation("Email delivery started: {count} message(s) were resumed for delivery", email.TotalCount);
-
-                deliveryCancellationTokenSource = new CancellationTokenSource();
-                deliveryTask = DeliverAsync(deliveryCancellationTokenSource.Token);
+                await backgroundEmailSenderService.SendEmailAsync(message);
             }
-            catch (Exception startException)
-            {
-                logger.LogError(startException, "Couldn't start email delivery");
-            }
+
+            logger.LogInformation("Email delivery started: {count} message(s) were resumed for delivery", email.TotalCount);
+
+            deliveryCancellationTokenSource = new CancellationTokenSource();
+            deliveryTask = DeliverAsync(deliveryCancellationTokenSource.Token);
+        }
+        catch (Exception startException) logger.LogError(startException, "Couldn't start email delivery");
         }
 
         public async Task StopAsync(CancellationToken token)
@@ -108,7 +105,7 @@ namespace BackgroundEmailSenderSample.HostedServices
             while (!token.IsCancellationRequested)
             {
                 MimeMessage msg = null;
-                Email message= new();
+                Email message = new();
 
                 try
                 {
@@ -121,13 +118,10 @@ namespace BackgroundEmailSenderSample.HostedServices
 
                     await backgroundEmailSenderService.SendEmailAsync(message);
                     await backgroundEmailSenderService.UpdateEmailAsync(message);
-                    
+
                     logger.LogInformation($"E-mail sent successfully to {msg.To}");
                 }
-                catch (OperationCanceledException)
-                {
-                    break;
-                }
+                catch (OperationCanceledException) break;
                 catch (Exception sendException)
                 {
                     var recipient = msg?.To[0];
@@ -153,22 +147,18 @@ namespace BackgroundEmailSenderSample.HostedServices
                                 await backgroundEmailSenderService.SendEmailAsync(message);
                             }
                         }
-                        catch (Exception requeueException)
-                        {
-                            logger.LogError(requeueException, "Couldn't requeue message to {0}", recipient);
+                        catch (Exception requeueException) logger.LogError(requeueException, "Couldn't requeue message to {0}", recipient);
                         }
+
+                        await Task.Delay(optionsMonitor.CurrentValue.DelayOnError, token);
                     }
-                    
-                    await Task.Delay(optionsMonitor.CurrentValue.DelayOnError, token);
                 }
+
+                logger.LogInformation("E-mail background delivery stopped");
             }
 
-            logger.LogInformation("E-mail background delivery stopped");
+            public void Dispose()
+            {
+                CancelDeliveryTask();
+            }
         }
-
-        public void Dispose()
-        {
-            CancelDeliveryTask();
-        }
-    }
-}
