@@ -59,99 +59,114 @@ public class BackgroundEmailSenderService : IBackgroundEmailSenderService
             await client.SendAsync(message);
             await client.DisconnectAsync(true);
         }
-        catch (Exception exc) throw new Exception(exc.Message);
-        }
-
-        public async Task SaveEmailAsync(Email input)
+        catch (Exception exc)
         {
-            dbContext.Add(input);
+            throw new Exception(exc.Message);
+        }
+    }
 
-            try
-            {
-                await dbContext.SaveChangesAsync();
-            }
-            catch (DbUpdateException exc) when ((exc.InnerException as SqliteException)?.SqliteErrorCode == 19) throw new Exception();
-            }
+    public async Task SaveEmailAsync(Email input)
+    {
+        dbContext.Add(input);
 
-            public async Task UpdateEmailAsync(Email model)
-            {
-                Email email = await dbContext.Emails.FindAsync(model.Id);
+        try
+        {
+            await dbContext.SaveChangesAsync();
+        }
+        catch (DbUpdateException exc) when ((exc.InnerException as SqliteException)?.SqliteErrorCode == 19)
+        {}
 
-                email.ChangeStatus(nameof(MailStatus.Sent));
+        throw new Exception();
+    }
 
-                try
-                {
-                    await dbContext.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException) throw new Exception();
-                }
+    public async Task UpdateEmailAsync(Email model)
+    {
+        Email email = await dbContext.Emails.FindAsync(model.Id);
 
-                public async Task UpdateStatusAsync(Email model)
-                {
-                    Email email = await dbContext.Emails.FindAsync(model.Id);
+        email.ChangeStatus(nameof(MailStatus.Sent));
 
-                    email.ChangeStatus(nameof(MailStatus.Deleted));
+        try
+        {
+            await dbContext.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {}
 
-                    try
-                    {
-                        await dbContext.SaveChangesAsync();
-                    }
-                    catch (DbUpdateConcurrencyException) throw new Exception();
-                    }
+        throw new Exception();
+    }
 
-                    public async Task UpdateCounterAsync(Email model)
-                    {
-                        int counter = 0;
-                        int newCounter = 0;
+    public async Task UpdateStatusAsync(Email model)
+    {
+        Email email = await dbContext.Emails.FindAsync(model.Id);
 
-                        Email email = await dbContext.Emails.FindAsync(model.Id);
+        email.ChangeStatus(nameof(MailStatus.Deleted));
 
-                        counter = model.SenderCount;
-                        newCounter = counter + 1;
+        try
+        {
+            await dbContext.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {}
 
-                        email.ChangeSenderCount(newCounter);
+        throw new Exception();
+    }
 
-                        try
-                        {
-                            await dbContext.SaveChangesAsync();
-                        }
-                        catch (DbUpdateConcurrencyException) throw new Exception();
-                        }
+    public async Task UpdateCounterAsync(Email model)
+    {
+        int counter = 0;
+        int newCounter = 0;
 
-                        public async Task<ListViewModel<EmailViewModel>> FindEmailAsync()
-                        {
-                            IQueryable<Email> baseQuery = dbContext.Emails;
+        Email email = await dbContext.Emails.FindAsync(model.Id);
 
-                            IQueryable<Email> queryLinq = baseQuery
-                                .Where(email => email.Status == nameof(MailStatus.InProgress))
-                                .AsNoTracking();
+        counter = model.SenderCount;
+        newCounter = counter + 1;
 
-                            List<EmailViewModel> emails = await queryLinq
-                                .Select(email => EmailViewModel.FromEntity(email))
-                                .ToListAsync();
+        email.ChangeSenderCount(newCounter);
 
-                            int totalCount = await queryLinq.CountAsync();
+        try
+        {
+            await dbContext.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {}
 
-                            ListViewModel<EmailViewModel> result = new()
-                            {
-                                Results = emails,
-                                TotalCount = totalCount
-                            };
+        throw new Exception();
+    }
 
-                            return result;
-                        }
+    public async Task<ListViewModel<EmailViewModel>> FindEmailAsync()
+    {
+        IQueryable<Email> baseQuery = dbContext.Emails;
 
-                        public async Task<EmailDetailViewModel> FindMessageAsync(Email model)
-                        {
-                            IQueryable<EmailDetailViewModel> queryLinq = dbContext.Emails
-                                .AsNoTracking()
-                                .Where(email => email.Id == model.Id)
-                                .Select(email => EmailDetailViewModel.FromEntity(email));
+        IQueryable<Email> queryLinq = baseQuery
+            .Where(email => email.Status == nameof(MailStatus.InProgress))
+            .AsNoTracking();
 
-                            EmailDetailViewModel viewModel = await queryLinq.FirstOrDefaultAsync();
+        List<EmailViewModel> emails = await queryLinq
+            .Select(email => EmailViewModel.FromEntity(email))
+            .ToListAsync();
 
-                            if (viewModel == null) throw new Exception();
+        int totalCount = await queryLinq.CountAsync();
 
-                            return viewModel;
-                        }
-                    }
+        ListViewModel<EmailViewModel> result = new()
+        {
+            Results = emails,
+            TotalCount = totalCount
+        };
+
+        return result;
+    }
+
+    public async Task<EmailDetailViewModel> FindMessageAsync(Email model)
+    {
+        IQueryable<EmailDetailViewModel> queryLinq = dbContext.Emails
+            .AsNoTracking()
+            .Where(email => email.Id == model.Id)
+            .Select(email => EmailDetailViewModel.FromEntity(email));
+
+        EmailDetailViewModel viewModel = await queryLinq.FirstOrDefaultAsync();
+
+        if (viewModel == null) throw new Exception();
+
+        return viewModel;
+    }
+}

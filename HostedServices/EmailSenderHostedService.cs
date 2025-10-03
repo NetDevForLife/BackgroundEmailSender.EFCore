@@ -70,95 +70,105 @@ public class EmailSenderHostedService : IHostedService, IDisposable
             deliveryCancellationTokenSource = new CancellationTokenSource();
             deliveryTask = DeliverAsync(deliveryCancellationTokenSource.Token);
         }
-        catch (Exception startException) logger.LogError(startException, "Couldn't start email delivery");
-        }
-
-        public async Task StopAsync(CancellationToken token)
+        catch (Exception startException)
         {
-            CancelDeliveryTask();
-            await Task.WhenAny(deliveryTask, Task.Delay(Timeout.Infinite, token));
+            logger.LogError(startException, "Couldn't start email delivery");
         }
+    }
 
-        private void CancelDeliveryTask()
+    public async Task StopAsync(CancellationToken token)
+    {
+        CancelDeliveryTask();
+        await Task.WhenAny(deliveryTask, Task.Delay(Timeout.Infinite, token));
+    }
+
+    private void CancelDeliveryTask()
+    {
+        try
         {
+            if (deliveryCancellationTokenSource != null)
+            {
+                logger.LogInformation("Stopping e-mail background delivery");
+                deliveryCancellationTokenSource.Cancel();
+                deliveryCancellationTokenSource = null;
+            }
+        }
+        catch
+        {
+        }
+    }
+
+    public async Task DeliverAsync(CancellationToken token)
+    {
+        logger.LogInformation("E-mail background delivery started");
+
+        using var serviceScope = serviceScopeFactory.CreateScope();
+        var backgroundEmailSenderService =
+            serviceScope.ServiceProvider.GetRequiredService<IBackgroundEmailSenderService>();
+
+        while (!token.IsCancellationRequested)
+        {
+            MimeMessage msg = null;
+            Email message = new();
+
             try
             {
-                if (deliveryCancellationTokenSource != null)
-                {
-                    logger.LogInformation("Stopping e-mail background delivery");
-                    deliveryCancellationTokenSource.Cancel();
-                    deliveryCancellationTokenSource = null;
-                }
+                msg = await mailMessages.ReceiveAsync(token);
+
+                message.Id = msg.MessageId;
+                message.Recipient = msg.To.ToString();
+                message.Subject = msg.Subject;
+                message.Message = msg.TextBody;
+
+                await backgroundEmailSenderService.SendEmailAsync(message);
+                await backgroundEmailSenderService.UpdateEmailAsync(message);
+
+                logger.LogInformation($"E-mail sent successfully to {msg.To}");
             }
-            catch
+            catch (OperationCanceledException)
             {
+                break;
             }
-        }
-
-        public async Task DeliverAsync(CancellationToken token)
-        {
-            logger.LogInformation("E-mail background delivery started");
-
-            using var serviceScope = serviceScopeFactory.CreateScope();
-            var backgroundEmailSenderService = serviceScope.ServiceProvider.GetRequiredService<IBackgroundEmailSenderService>();
-
-            while (!token.IsCancellationRequested)
+            catch (Exception sendException)
             {
-                MimeMessage msg = null;
-                Email message = new();
+                var recipient = msg?.To[0];
+                logger.LogError(sendException, "Couldn't send an e-mail to {recipient}", recipient);
 
-                try
+                EmailDetailViewModel viewModel = await backgroundEmailSenderService.FindMessageAsync(message);
+
+                int counter = 0;
+
+                if (viewModel != null)
                 {
-                    msg = await mailMessages.ReceiveAsync(token);
-
-                    message.Id = msg.MessageId;
-                    message.Recipient = msg.To.ToString();
-                    message.Subject = msg.Subject;
-                    message.Message = msg.TextBody;
-
-                    await backgroundEmailSenderService.SendEmailAsync(message);
-                    await backgroundEmailSenderService.UpdateEmailAsync(message);
-
-                    logger.LogInformation($"E-mail sent successfully to {msg.To}");
-                }
-                catch (OperationCanceledException) break;
-                catch (Exception sendException)
-                {
-                    var recipient = msg?.To[0];
-                    logger.LogError(sendException, "Couldn't send an e-mail to {recipient}", recipient);
-
-                    EmailDetailViewModel viewModel = await backgroundEmailSenderService.FindMessageAsync(message);
-
-                    int counter = 0;
-
-                    if (viewModel != null)
+                    try
                     {
-                        try
+                        counter = Convert.ToInt32(viewModel.SenderCount);
+
+                        if (counter == 25)
                         {
-                            counter = Convert.ToInt32(viewModel.SenderCount);
-
-                            if (counter == 25)
-                            {
-                                await backgroundEmailSenderService.UpdateStatusAsync(message);
-                            }
-                            else
-                            {
-                                await backgroundEmailSenderService.UpdateCounterAsync(message);
-                                await backgroundEmailSenderService.SendEmailAsync(message);
-                            }
+                            await backgroundEmailSenderService.UpdateStatusAsync(message);
                         }
-                        catch (Exception requeueException) logger.LogError(requeueException, "Couldn't requeue message to {0}", recipient);
+                        else
+                        {
+                            await backgroundEmailSenderService.UpdateCounterAsync(message);
+                            await backgroundEmailSenderService.SendEmailAsync(message);
                         }
-
-                        await Task.Delay(optionsMonitor.CurrentValue.DelayOnError, token);
+                    }
+                    catch (Exception requeueException)
+                    {
+                        logger.LogError(requeueException, "Couldn't requeue message to {0}", recipient);
                     }
                 }
 
-                logger.LogInformation("E-mail background delivery stopped");
-            }
-
-            public void Dispose()
-            {
-                CancelDeliveryTask();
+                await Task.Delay(optionsMonitor.CurrentValue.DelayOnError, token);
             }
         }
+
+        logger.LogInformation("E-mail background delivery stopped");
+    }
+
+    public void Dispose()
+    {
+        CancelDeliveryTask();
+    }
+}
