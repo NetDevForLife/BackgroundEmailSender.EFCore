@@ -11,7 +11,7 @@ namespace BackgroundEmailSenderSample.Controllers;
 
 public class HomeController : Controller
 {
-    public IActionResult Index() => return View();
+    public IActionResult Index() => View();
 
     [HttpPost]
     public async Task<IActionResult> SendMail(EmailInputModel inputModel, [FromServices] IBackgroundEmailSenderService backgroundEmailSenderService)
@@ -30,5 +30,5 @@ public class HomeController : Controller
         return RedirectToAction(nameof(ThankYou));
     }
 
-    public IActionResult ThankYou() => return View();
+    public IActionResult ThankYou() => View();
 }
